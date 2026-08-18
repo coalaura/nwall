@@ -131,7 +131,9 @@ expect_body "ok" http://127.0.0.1:18080/environment
 expect_body "off" http://127.0.0.1:18081/
 expect_body "off" -A sqlmap http://127.0.0.1:18081/
 expect_body "off" http://127.0.0.1:18081/secret.env
+expect_body "off" http://127.0.0.1:18081/secret.ENV
 expect_body "off" http://127.0.0.1:18081/.git/HEAD
+expect_body "off" http://127.0.0.1:18081/.GiT/head
 
 still_up
 
@@ -142,10 +144,12 @@ expect_drop "empty ua" -A "" http://127.0.0.1:18080/
 # nwall on - path (matches current rules/nwall.rules)
 expect_drop "path_suffix .env" http://127.0.0.1:18080/secret.env
 expect_drop "path_contains /.env" http://127.0.0.1:18080/api/.env.local
+expect_drop "path_suffix .env (uppercase)" http://127.0.0.1:18080/secret.ENV
 expect_drop "path /.env" http://127.0.0.1:18080/.env
 expect_drop "path_suffix /.git" http://127.0.0.1:18080/.git
 expect_drop "path_contains /.git/" http://127.0.0.1:18080/.git/HEAD
 expect_drop "path /repo/.git" http://127.0.0.1:18080/repo/.git
+expect_drop "path /repo/.GIT" http://127.0.0.1:18080/repo/.GIT
 expect_drop "path_suffix /wp-admin.php" http://127.0.0.1:18080/wp-admin.php
 expect_drop "path /foo/wp-admin.php" http://127.0.0.1:18080/foo/wp-admin.php
 
