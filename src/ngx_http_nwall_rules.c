@@ -42,7 +42,7 @@ static ngx_int_t ngx_http_nwall_contains(ngx_str_t *hay, ngx_str_t *needle)
 
 ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwall_ruleset_t *rs)
 {
-    ngx_str_t              ua, lowered, *subject;
+    ngx_str_t              ua, lowered_ua, lowered_uri, *subject;
     ngx_uint_t             i;
     ngx_http_nwall_rule_t *rule, *rules;
 
@@ -56,18 +56,29 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
         ngx_str_null(&ua);
     }
 
-    lowered.len = 0;
-    lowered.data = NULL;
+    ngx_str_null(&lowered_ua);
+    ngx_str_null(&lowered_uri);
 
     if (ua.len) {
-        lowered.data = ngx_pnalloc(r->pool, ua.len);
-        if (lowered.data == NULL) {
+        lowered_ua.data = ngx_pnalloc(r->pool, ua.len);
+        if (lowered_ua.data == NULL) {
             return NULL;
         }
 
-        ngx_strlow(lowered.data, ua.data, ua.len);
+        ngx_strlow(lowered_ua.data, ua.data, ua.len);
 
-        lowered.len = ua.len;
+        lowered_ua.len = ua.len;
+    }
+
+    if (r->uri.len) {
+        lowered_uri.data = ngx_pnalloc(r->pool, r->uri.len);
+        if (lowered_uri.data == NULL) {
+            return NULL;
+        }
+
+        ngx_strlow(lowered_uri.data, r->uri.data, r->uri.len);
+
+        lowered_uri.len = r->uri.len;
     }
 
     rules = rs->rules->elts;
@@ -76,7 +87,7 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
         rule = &rules[i];
 
         if (rule->target == NWALL_TARGET_UA) {
-            subject = &lowered;
+            subject = &lowered_ua;
 
             if (rule->op == NWALL_OP_EMPTY) {
                 if (ua.len == 0) {
@@ -87,7 +98,7 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
             }
 
         } else {
-            subject = &r->uri;
+            subject = &lowered_uri;
         }
 
         switch (rule->op) {
@@ -382,6 +393,12 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
             if (ngx_http_nwall_value(ps, &value) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
+
+            if (value.len == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, ps->cf, 0, "nwall: %V:%ui: empty pattern", ps->file, ps->line);
+
+                return NGX_CONF_ERROR;
+            }
         }
 
         if (ngx_http_nwall_expect_semi(ps) != NGX_OK) {
@@ -405,8 +422,7 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
 
         ngx_memcpy(rule->kind.data, kind.data, kind.len);
 
-        /* UA match is case-insensitive, like the old ~* map */
-        if (target == NWALL_TARGET_UA && value.len) {
+        if (rule->pattern.len) {
             ngx_strlow(rule->pattern.data, rule->pattern.data, rule->pattern.len);
         }
     }
@@ -431,13 +447,13 @@ char * ngx_http_nwall_load_rules(ngx_conf_t *cf, ngx_str_t *path, ngx_http_nwall
 
     fd = ngx_open_file(full.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
     if (fd == NGX_INVALID_FILE) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_open_file_n " \"%V\" failed", &full);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "nwall: " ngx_open_file_n " \"%V\" failed", &full);
 
 		return NGX_CONF_ERROR;
     }
 
     if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_fd_info_n " \"%V\" failed", &full);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "nwall: " ngx_fd_info_n " \"%V\" failed", &full);
 
 		goto failed;
     }
@@ -451,13 +467,13 @@ char * ngx_http_nwall_load_rules(ngx_conf_t *cf, ngx_str_t *path, ngx_http_nwall
 
     n = ngx_read_fd(fd, buf, size);
     if (n == -1) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_read_fd_n " \"%V\" failed", &full);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "nwall: " ngx_read_fd_n " \"%V\" failed", &full);
 
         goto failed;
     }
 
     if ((size_t) n != size) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, ngx_read_fd_n " \"%V\" returned only %z of %uz", &full, n, size);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "nwall: " ngx_read_fd_n " \"%V\" returned only %z of %uz", &full, n, size);
 
 		goto failed;
     }
@@ -465,7 +481,7 @@ char * ngx_http_nwall_load_rules(ngx_conf_t *cf, ngx_str_t *path, ngx_http_nwall
     buf[size] = '\0';
 
     if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-        ngx_conf_log_error(NGX_LOG_ALERT, cf, ngx_errno, ngx_close_file_n " \"%V\" failed", &full);
+        ngx_conf_log_error(NGX_LOG_ALERT, cf, ngx_errno, "nwall: " ngx_close_file_n " \"%V\" failed", &full);
     }
 
     fd = NGX_INVALID_FILE;

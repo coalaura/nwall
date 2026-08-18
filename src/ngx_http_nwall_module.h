@@ -17,7 +17,7 @@
 typedef struct {
     ngx_uint_t  target;
     ngx_uint_t  op;
-    ngx_str_t   pattern;   /* UA patterns stored lowercase */
+    ngx_str_t   pattern;   /* stored lowercase */
     ngx_str_t   kind;      /* e.g. "ua_contains" - for logs */
 } ngx_http_nwall_rule_t;
 

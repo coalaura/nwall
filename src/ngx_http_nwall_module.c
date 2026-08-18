@@ -91,7 +91,7 @@ static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
         ngx_str_set(&ua, "-");
     }
 
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "nwall: drop %V \"%V\" ua:\"%V\" uri:\"%V\"", &hit->kind, &hit->pattern, &ua, &r->uri);
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "nwall: drop client:%V rule:%V pattern:\"%V\" ua:\"%V\" uri:\"%V\"", &r->connection->addr_text, &hit->kind, &hit->pattern, &ua, &r->uri);
 
     return NGX_HTTP_CLOSE;
 }
@@ -151,7 +151,7 @@ static char * ngx_http_nwall_merge_srv_conf(ngx_conf_t *cf, void *parent, void *
         nmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_nwall_module);
 
         if (nmcf->ruleset == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "nwall on but nwall_rules was not set");
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "nwall: on but nwall_rules was not set");
 
             return NGX_CONF_ERROR;
         }
