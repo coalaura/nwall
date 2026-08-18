@@ -4,159 +4,402 @@ ua_empty;
 ##
 # SEO Crawlers / Backlink Scrapers
 ##
-ua_contains "semrushbot";
 ua_contains "ahrefsbot";
-ua_contains "mj12bot";
-ua_contains "dotbot";
+ua_contains "backlinkcrawler";
 ua_contains "blexbot";
+ua_contains "dataforseobot";
+ua_contains "dotbot";
+ua_contains "linkdexbot";
 ua_contains "linkfluence";
+ua_contains "lipperhey";
+ua_contains "mj12bot";
+ua_contains "rogerbot";
+ua_contains "semrushbot";
+ua_contains "seobilitybot";
 ua_contains "seokicks";
 ua_contains "seopowersuite";
-ua_contains "serpstatbot";
-ua_contains "webmeup-crawler";
-ua_contains "backlinkcrawler";
 ua_contains "seranking";
+ua_contains "serpstatbot";
 ua_contains "sistrix";
-ua_contains "lipperhey";
+ua_contains "siteauditbot";
+ua_contains "spbot";
+ua_contains "webmeup-crawler";
 
 ##
 # AI Scrapers
 ##
-ua_contains "gptbot";
-ua_contains "chatgpt-user";
-ua_contains "oai-searchbot";
+ua_contains "ai2bot";
+ua_contains "amazonbot";
 ua_contains "anthropic-ai";
+ua_contains "bytespider";
+ua_contains "ccbot";
+ua_contains "chatgpt-user";
+ua_contains "claude-searchbot";
+ua_contains "claude-user";
 ua_contains "claude-web";
 ua_contains "claudebot";
-ua_contains "ccbot";
 ua_contains "cohere-ai";
-ua_contains "bytespider";
-ua_contains "amazonbot";
-ua_contains "omgili";
 ua_contains "diffbot";
-ua_contains "applebot-extended";
-ua_contains "meta-externalagent";
-ua_contains "facebookexternalhit";
-ua_contains "perplexitybot";
-ua_contains "google-extended";
+ua_contains "duckassistbot";
+ua_contains "facebookbot";
+ua_contains "google-cloudvertexbot";
+ua_contains "gptbot";
 ua_contains "imagesiftbot";
+ua_contains "img2dataset";
+ua_contains "kangaroo bot";
+ua_contains "meta-externalagent";
 ua_contains "mistral-ai";
+ua_contains "mistralai-user";
+ua_contains "oai-searchbot";
+ua_contains "omgili";
+ua_contains "perplexity-user";
+ua_contains "perplexitybot";
+ua_contains "timpibot";
+ua_contains "velenpublicwebcrawler";
+ua_contains "webzio-extended";
 ua_contains "youbot";
 
 ##
 # Aggressive / Unwanted Crawlers
 ##
 ua_contains "barkrowler";
-ua_contains "seznambot";
-ua_contains "yandexbot";
-ua_contains "petalbot";
-ua_contains "petal bot";
-ua_contains "megaindex";
-ua_contains "bingpreview";
+ua_contains "bubing";
 ua_contains "censysinspect";
-ua_contains "neevabot";
-ua_contains "mauibot";
 ua_contains "domainsproject";
 ua_contains "ioncrawl";
+ua_contains "ltx71";
+ua_contains "mauibot";
+ua_contains "megaindex";
+ua_contains "neevabot";
+ua_contains "netcraftsurveyagent";
+ua_contains "petal bot";
+ua_contains "petalbot";
+ua_contains "scrapy";
+ua_contains "serendeputybot";
+ua_contains "seznambot";
+ua_contains "yandexbot";
+ua_contains "zoominfobot";
 
 ##
 # Vulnerability Scanners / Malicious
 ##
-ua_contains "nmap";
-ua_contains "nikto";
-ua_contains "sqlmap";
-ua_contains "masscan";
-ua_contains "zmeu";
-ua_contains "morfeus";
-ua_contains "openvas";
-ua_contains "nessus";
-ua_contains "w3af";
-ua_contains "havij";
 ua_contains "acunetix";
+ua_contains "arachni";
 ua_contains "burpcollaborator";
+ua_contains "dalfox";
 ua_contains "dirbuster";
+ua_contains "dirsearch";
+ua_contains "feroxbuster";
+ua_contains "ffuf";
 ua_contains "gobuster";
-ua_contains "wfuzz";
-ua_contains "nuclei";
+ua_contains "havij";
+ua_contains "invicti";
 ua_contains "jaeles";
+ua_contains "leakix";
+ua_contains "masscan";
+ua_contains "metasploit";
+ua_contains "morfeus";
+ua_contains "nessus";
+ua_contains "netsparker";
+ua_contains "nikto";
+ua_contains "nmap";
+ua_contains "nuclei";
+ua_contains "openvas";
+ua_contains "owasp zap";
+ua_contains "qualys";
+ua_contains "shodan";
+ua_contains "skipfish";
+ua_contains "sqlmap";
+ua_contains "w3af";
+ua_contains "whatweb";
+ua_contains "wfuzz";
+ua_contains "wpscan";
+ua_contains "zgrab";
+ua_contains "zmeu";
 
 ##
-# Path probes
+# Version Control Metadata
 ##
-
-# VCS metadata (/.git/HEAD, /project/.git/config, /.svn/entries)
-path_contains "/.git/";
-path_suffix "/.git";
-path_contains "/.svn/";
-path_suffix "/.svn";
-path_contains "/.hg/";
-path_suffix "/.hg";
 path_contains "/.bzr/";
 path_suffix "/.bzr";
+path_contains "/.git/";
+path_suffix "/.git";
+path_contains "/.hg/";
+path_suffix "/.hg";
+path_contains "/.svn/";
+path_suffix "/.svn";
 
-# Env files: /.env, /.env.local, /api/.env, /secret.env
+##
+# Environment / Runtime Secrets
+##
 path_contains "/.env";
 path_suffix ".env";
+path_suffix "/proc/self/environ";
+path_contains "/@fs/proc/";
 
-# App / server secrets
-path_suffix "/.htpasswd";
-path_suffix "/.htaccess";
-path_suffix "/.npmrc";
-path_suffix "/.yarnrc";
-path_suffix "/.pypirc";
-path_suffix "/.netrc";
+##
+# Local Credentials / Shell Files
+##
 path_suffix "/.bash_history";
-path_suffix "/.mysql_history";
+path_suffix "/.bash_profile";
+path_suffix "/.bashrc";
+path_suffix "/.boto";
 path_suffix "/.git-credentials";
 path_suffix "/.gitconfig";
-path_suffix "/rclone.conf";
-path_suffix "/.boto";
+path_suffix "/.htaccess";
+path_suffix "/.htpasswd";
+path_suffix "/.my.cnf";
+path_suffix "/.mysql_history";
+path_suffix "/.netrc";
+path_suffix "/.npmrc";
+path_suffix "/.pgpass";
+path_suffix "/.profile";
+path_suffix "/.pypirc";
+path_suffix "/.python_history";
+path_suffix "/.rediscli_history";
 path_suffix "/.s3cfg";
-path_suffix "/wp-config.php";
-path_suffix "/wp-config.php.bak";
-path_suffix "/localsettings.php";
-path_suffix "/settings.php.bak";
+path_suffix "/.yarnrc";
+path_suffix "/.zsh_history";
+path_suffix "/.zshrc";
+path_suffix "/rclone.conf";
 
-# SSH / TLS private material
+##
+# Application / Framework Secrets
+##
+path_suffix "/.user.ini";
+path_suffix "/application.properties";
+path_suffix "/application.yaml";
+path_suffix "/application.yml";
+path_suffix "/appsettings.development.json";
+path_suffix "/appsettings.json";
+path_suffix "/appsettings.production.json";
+path_suffix "/bootstrap.properties";
+path_suffix "/bootstrap.yaml";
+path_suffix "/bootstrap.yml";
+path_suffix "/config/database.yml";
+path_suffix "/config/storage.yml";
+path_suffix "/gradle.properties";
+path_suffix "/local.settings.json";
+path_suffix "/localsettings.php";
+path_suffix "/php.ini";
+path_suffix "/secrets.toml";
+path_suffix "/web.config";
+path_contains "/.gradle/";
+
+##
+# SSH / TLS Private Material
+##
 path_contains "/.ssh/";
 path_suffix "/.ssh";
-path_suffix "/id_rsa";
+path_suffix "/authorized_keys";
+path_suffix "/client.key";
+path_suffix "/host.key";
 path_suffix "/id_dsa";
 path_suffix "/id_ecdsa";
 path_suffix "/id_ed25519";
-path_suffix "/authorized_keys";
+path_suffix "/id_rsa";
+path_suffix "/key.pem";
 path_suffix "/known_hosts";
-path_suffix "/server.key";
+path_suffix "/localhost.key";
+path_suffix "/master.key";
+path_suffix "/private-key";
 path_suffix "/private.key";
+path_suffix "/private.pem";
 path_suffix "/privatekey.key";
 path_suffix "/privkey.pem";
+path_suffix "/server.key";
+path_suffix "/tls.key";
 
-# Cloud / CI credential dumps
+##
+# Cloud / CI Credentials
+##
 path_contains "/.aws/";
-path_contains "/.docker/";
-path_contains "/.kube/";
 path_contains "/.azure/";
+path_contains "/.config/gcloud/";
+path_contains "/.config/gh/";
+path_contains "/.docker/";
 path_contains "/.github/";
+path_contains "/.kube/";
 path_contains "/.vscode/";
+path_suffix "/.gitlab-ci.yml";
+path_suffix "-credentials.json";
+path_suffix "-service-account.json";
+path_suffix "_service_account.json";
+path_suffix "/credentials.js";
 path_suffix "/credentials.json";
+path_suffix "/firebase-admin.json";
+path_suffix "/firebase-adminsdk.json";
+path_suffix "/gcp-key.json";
+path_suffix "/key.json";
 path_suffix "/secrets.json";
-path_suffix "/secrets.yml";
 path_suffix "/secrets.yaml";
-path_suffix "/serviceaccountkey.json";
+path_suffix "/secrets.yml";
 path_suffix "/service-account.json";
 path_suffix "/service_account.json";
-path_suffix "/firebase-adminsdk.json";
-path_suffix "/firebase-service-account.json";
-path_suffix "/key.json";
+path_suffix "/serviceaccountkey.json";
 
-# IaC / state (often has secrets)
-path_suffix ".tfstate";
-path_suffix ".tfvars";
+##
+# AI / Developer Tool Credentials
+##
+path_contains "/.claude/";
+path_contains "/.codex/";
+path_contains "/.config/anthropic/";
+path_contains "/.continue/";
+path_contains "/.cursor/";
+path_contains "/.hermes/";
+path_contains "/.openclaw/";
+path_contains "/.streamlit/";
+path_suffix "/.aider.conf.yaml";
+path_suffix "/.aider.conf.yml";
+path_suffix "/.claude.json";
+path_suffix "/.mcp.json";
+
+##
+# Infrastructure State
+##
 path_contains "/.terraform/";
+path_suffix ".tfstate";
+path_suffix ".tfstate.backup";
+path_suffix ".tfvars";
+path_suffix ".tfvars.json";
 
-# Scanner junk that is never a real app route
-path_suffix "/wp-admin.php";
+##
+# Source Backup Artifacts
+##
+path_suffix ".php.bak";
+path_suffix ".php.old";
+path_suffix ".php.orig";
+path_suffix ".php.save";
+path_suffix ".php.swp";
+path_suffix ".php~";
+
+##
+# Debug / Diagnostic Interfaces
+##
+path_contains "/__debug__/";
+path_suffix "/__debug__";
+path_contains "/_debugbar/";
+path_suffix "/_debugbar";
+path_contains "/_ignition/";
+path_suffix "/_ignition";
+path_contains "/_profiler/";
+path_suffix "/_profiler";
+path_contains "/app_dev.php/";
+path_suffix "/app_dev.php";
+path_contains "/debug/pprof/";
+path_suffix "/debug/pprof";
+path_suffix "/debug/vars";
+path_contains "/telescope/requests/";
+path_suffix "/telescope/requests";
+path_suffix "/actuator/beans";
+path_suffix "/actuator/configprops";
+path_suffix "/actuator/env";
+path_contains "/actuator/env/";
+path_suffix "/actuator/heapdump";
+path_contains "/actuator/loggers/";
+path_suffix "/actuator/loggers";
+path_suffix "/actuator/mappings";
+path_suffix "/actuator/shutdown";
+path_suffix "/actuator/threaddump";
+path_suffix "/elmah.axd";
+path_suffix "/nginx_status";
 path_suffix "/phpinfo.php";
-path_suffix "/info.php";
+path_suffix "/server-info";
+path_suffix "/server-status";
+path_suffix "/trace.axd";
+
+##
+# Exploit Probes
+##
+path_contains "/cgi-bin/cgi-bin/";
+path_suffix "/eval-stdin.php";
+
+##
+# WordPress Secret / Misplaced Core Files
+##
+path_contains "/.well-known/wp-";
+path_contains "/cgi-bin/wp-";
+path_contains "/wp-admin/wp-";
+path_contains "/wp-config.php.";
+path_suffix "/wp-config.php";
+path_suffix "/wp-includes/ixr/wp-login.php";
+path_suffix "/wp-admin/login.php";
+
+##
+# WordPress Non-Core Shell Probes
+##
+path_suffix "/wp-2019.php";
+path_suffix "/wp-access.php";
+path_suffix "/wp-admin.php";
+path_suffix "/wp-blink.php";
+path_suffix "/wp-blog.php";
+path_suffix "/wp-blogs.php";
+path_suffix "/wp-contentt.php";
+path_suffix "/wp-file.php";
+path_suffix "/wp-good.php";
+path_suffix "/wp-index.php";
+path_suffix "/wp-logs.php";
+path_suffix "/wp-sigunq.php";
+path_suffix "/wp-the.php";
+
+##
+# WordPress Writable / Asset Directory Shells
+##
+path_suffix "/wp-admin/css/admin.php";
+path_suffix "/wp-admin/css/min.php";
+path_suffix "/wp-admin/data.php";
+path_suffix "/wp-admin/file.php";
+path_suffix "/wp-admin/home.php";
+path_suffix "/wp-admin/images/admin.php";
+path_suffix "/wp-admin/images/min.php";
+path_suffix "/wp-admin/js/admin.php";
+path_suffix "/wp-admin/js/min.php";
+path_suffix "/wp-admin/min.php";
+path_suffix "/wp-admin/test.php";
+path_suffix "/wp-content/admin.php";
+path_suffix "/wp-content/api.php";
+path_suffix "/wp-content/db-status.php";
+path_suffix "/wp-content/file.php";
+path_suffix "/wp-content/home.php";
+path_suffix "/wp-content/packed.php";
+path_suffix "/wp-content/plugins/admin.php";
+path_suffix "/wp-content/themes/admin.php";
+path_suffix "/wp-content/uploads/admin.php";
+path_suffix "/wp-includes/admin.php";
+path_suffix "/wp-includes/fonts/admin.php";
+path_suffix "/wp-includes/phpmailer/admin.php";
+
+##
+# Known Web Shells
+##
+path_suffix "/adminfuns.php";
+path_suffix "/ahax.php";
+path_suffix "/alfa-rex.php";
+path_suffix "/alfa-rex1.php";
+path_suffix "/alfa.php";
+path_suffix "/alfanew.php";
+path_suffix "/alfax.php";
+path_suffix "/atomlib.php";
+path_suffix "/bibil0day.php";
+path_suffix "/bypass.php";
+path_suffix "/c99.php";
+path_suffix "/classwithtostring.php";
+path_suffix "/deepseek_d.php";
+path_suffix "/filesman.php";
+path_suffix "/gecko-litespeed.php";
+path_suffix "/gecko-new.php";
+path_suffix "/gecko.php";
+path_suffix "/mariju.php";
+path_suffix "/r57.php";
+path_suffix "/shell.php";
+path_suffix "/webshell.php";
+path_suffix "/wso.php";
+path_suffix "/wso112233.php";
+path_suffix "/xleet.php";
+path_suffix "/zwso.php";
+
+##
+# Operating System Metadata
+##
 path_suffix "/.ds_store";
 path_suffix "/thumbs.db";
