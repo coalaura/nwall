@@ -11,7 +11,8 @@ http {
     nwall_rules /etc/nginx/nwall.rules;   # http{} only, once
 
     server {
-        nwall on;                         # default off; inherits
+        nwall monitor;                    # off, monitor, or on; default off
+        nwall_log basic;                  # off, basic, or full; default basic
     }
 }
 ```
@@ -27,10 +28,17 @@ One directive per line. `#` comments. Quoted or bare values; `\n` `\t` `\r` `\"`
 | `ua_empty;` | missing or empty `User-Agent` |
 | `ua_prefix` / `ua_suffix` / `ua_exact` / `ua_contains` | User-Agent |
 | `path_prefix` / `path_suffix` / `path_exact` / `path_contains` | URI path (`r->uri`, decoded, no query) |
+| `path_component` | Exact URI path component or component sequence, matched at component boundaries |
 
 All matches are case-insensitive. Empty patterns (`path_contains "";`) are a config error.
 
+`nwall monitor` logs matching requests but allows them. `nwall on` logs and closes matching requests.
+
+`nwall_log basic` logs the client, rule type, and rule value. `full` also logs the original User-Agent and URI. `off` disables per-request nwall logs.
+
 `ua_empty` will also drop health checks and scripted clients that send no User-Agent. Give those probes a UA or put them on a `nwall off` server.
+
+`path_component` values do not include leading or trailing slashes. They may contain multiple components, such as `path_component "telescope/requests";`.
 
 See [`rules/nwall.rules`](rules/nwall.rules).
 
@@ -39,7 +47,7 @@ See [`rules/nwall.rules`](rules/nwall.rules).
 Every nwall line is prefixed `nwall:` (error log). A drop looks like:
 
 ```
-nwall: drop client:1.2.3.4 rule:path_contains pattern:"/.git/" ua:"Mozilla/5.0" uri:"/.GIT/HEAD"
+nwall: drop client:1.2.3.4 rule:path_component value:".git"
 ```
 
 `ua` / `uri` are the original request values. Missing UA is logged as `-`.

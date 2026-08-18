@@ -126,14 +126,10 @@ ua_contains "zmeu";
 ##
 # Version Control Metadata
 ##
-path_contains "/.bzr/";
-path_suffix "/.bzr";
-path_contains "/.git/";
-path_suffix "/.git";
-path_contains "/.hg/";
-path_suffix "/.hg";
-path_contains "/.svn/";
-path_suffix "/.svn";
+path_component ".bzr";
+path_component ".git";
+path_component ".hg";
+path_component ".svn";
 
 ##
 # Environment / Runtime Secrets
@@ -141,7 +137,7 @@ path_suffix "/.svn";
 path_contains "/.env";
 path_suffix ".env";
 path_suffix "/proc/self/environ";
-path_contains "/@fs/proc/";
+path_component "@fs/proc";
 
 ##
 # Local Credentials / Shell Files
@@ -190,13 +186,12 @@ path_suffix "/localsettings.php";
 path_suffix "/php.ini";
 path_suffix "/secrets.toml";
 path_suffix "/web.config";
-path_contains "/.gradle/";
+path_component ".gradle";
 
 ##
 # SSH / TLS Private Material
 ##
-path_contains "/.ssh/";
-path_suffix "/.ssh";
+path_component ".ssh";
 path_suffix "/authorized_keys";
 path_suffix "/client.key";
 path_suffix "/host.key";
@@ -219,14 +214,14 @@ path_suffix "/tls.key";
 ##
 # Cloud / CI Credentials
 ##
-path_contains "/.aws/";
-path_contains "/.azure/";
-path_contains "/.config/gcloud/";
-path_contains "/.config/gh/";
-path_contains "/.docker/";
-path_contains "/.github/";
-path_contains "/.kube/";
-path_contains "/.vscode/";
+path_component ".aws";
+path_component ".azure";
+path_component ".config/gcloud";
+path_component ".config/gh";
+path_component ".docker";
+path_component ".github";
+path_component ".kube";
+path_component ".vscode";
 path_suffix "/.gitlab-ci.yml";
 path_suffix "-credentials.json";
 path_suffix "-service-account.json";
@@ -247,14 +242,14 @@ path_suffix "/serviceaccountkey.json";
 ##
 # AI / Developer Tool Credentials
 ##
-path_contains "/.claude/";
-path_contains "/.codex/";
-path_contains "/.config/anthropic/";
-path_contains "/.continue/";
-path_contains "/.cursor/";
-path_contains "/.hermes/";
-path_contains "/.openclaw/";
-path_contains "/.streamlit/";
+path_component ".claude";
+path_component ".codex";
+path_component ".config/anthropic";
+path_component ".continue";
+path_component ".cursor";
+path_component ".hermes";
+path_component ".openclaw";
+path_component ".streamlit";
 path_suffix "/.aider.conf.yaml";
 path_suffix "/.aider.conf.yml";
 path_suffix "/.claude.json";
@@ -263,7 +258,7 @@ path_suffix "/.mcp.json";
 ##
 # Infrastructure State
 ##
-path_contains "/.terraform/";
+path_component ".terraform";
 path_suffix ".tfstate";
 path_suffix ".tfstate.backup";
 path_suffix ".tfvars";
@@ -282,28 +277,19 @@ path_suffix ".php~";
 ##
 # Debug / Diagnostic Interfaces
 ##
-path_contains "/__debug__/";
-path_suffix "/__debug__";
-path_contains "/_debugbar/";
-path_suffix "/_debugbar";
-path_contains "/_ignition/";
-path_suffix "/_ignition";
-path_contains "/_profiler/";
-path_suffix "/_profiler";
-path_contains "/app_dev.php/";
-path_suffix "/app_dev.php";
-path_contains "/debug/pprof/";
-path_suffix "/debug/pprof";
+path_component "__debug__";
+path_component "_debugbar";
+path_component "_ignition";
+path_component "_profiler";
+path_component "app_dev.php";
+path_component "debug/pprof";
 path_suffix "/debug/vars";
-path_contains "/telescope/requests/";
-path_suffix "/telescope/requests";
+path_component "telescope/requests";
 path_suffix "/actuator/beans";
 path_suffix "/actuator/configprops";
-path_suffix "/actuator/env";
-path_contains "/actuator/env/";
+path_component "actuator/env";
 path_suffix "/actuator/heapdump";
-path_contains "/actuator/loggers/";
-path_suffix "/actuator/loggers";
+path_component "actuator/loggers";
 path_suffix "/actuator/mappings";
 path_suffix "/actuator/shutdown";
 path_suffix "/actuator/threaddump";
@@ -317,9 +303,9 @@ path_suffix "/trace.axd";
 ##
 # Exploit Probes
 ##
-path_contains "/cgi-bin/cgi-bin/";
+path_component "cgi-bin/cgi-bin";
 path_suffix "/eval-stdin.php";
-path_contains "/vendor/phpunit/";
+path_component "vendor/phpunit";
 
 ##
 # WordPress Secret / Misplaced Core Files

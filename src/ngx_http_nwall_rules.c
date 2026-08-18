@@ -10,6 +10,7 @@ typedef struct {
 } ngx_http_nwall_parser_t;
 
 static ngx_int_t ngx_http_nwall_contains(ngx_str_t *hay, ngx_str_t *needle);
+static ngx_int_t ngx_http_nwall_component(ngx_str_t *path, ngx_str_t *component);
 static void ngx_http_nwall_skip(ngx_http_nwall_parser_t *ps);
 static ngx_int_t ngx_http_nwall_ident(ngx_http_nwall_parser_t *ps, ngx_str_t *dst);
 static ngx_int_t ngx_http_nwall_value(ngx_http_nwall_parser_t *ps, ngx_str_t *dst);
@@ -33,6 +34,35 @@ static ngx_int_t ngx_http_nwall_contains(ngx_str_t *hay, ngx_str_t *needle)
 
     for (i = 0; i <= last; i++) {
         if (ngx_strncasecmp(hay->data + i, needle->data, needle->len) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static ngx_int_t ngx_http_nwall_component(ngx_str_t *path, ngx_str_t *component)
+{
+    size_t  i, last, end;
+
+    if (component->len == 0 || path->len < component->len) {
+        return 0;
+    }
+
+    last = path->len - component->len;
+
+    for (i = 0; i <= last; i++) {
+        if (i != 0 && path->data[i - 1] != '/') {
+            continue;
+        }
+
+        end = i + component->len;
+
+        if (end != path->len && path->data[end] != '/') {
+            continue;
+        }
+
+        if (ngx_strncasecmp(path->data + i, component->data, component->len) == 0) {
             return 1;
         }
     }
@@ -97,6 +127,12 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
             break;
         case NWALL_OP_CONTAINS:
             if (ngx_http_nwall_contains(subject, &rule->pattern)) {
+                return rule;
+            }
+
+            break;
+        case NWALL_OP_COMPONENT:
+            if (ngx_http_nwall_component(subject, &rule->pattern)) {
                 return rule;
             }
 
@@ -335,6 +371,12 @@ static ngx_int_t ngx_http_nwall_rule_kind(ngx_str_t *ident, ngx_uint_t *target, 
         return NGX_OK;
     }
 
+    if (*target == NWALL_TARGET_PATH && ident->len == 9 && ngx_strncmp(ident->data, "component", 9) == 0) {
+        *op = NWALL_OP_COMPONENT;
+
+        return NGX_OK;
+    }
+
     return NGX_DECLINED;
 }
 
@@ -342,7 +384,7 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
 {
     ngx_int_t              rc;
     ngx_str_t              ident, value, kind;
-    ngx_uint_t             target, op, needs_value;
+    ngx_uint_t             i, target, op, needs_value;
     ngx_http_nwall_rule_t *rule;
 
     for ( ;; ) {
@@ -373,6 +415,22 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
                 ngx_conf_log_error(NGX_LOG_EMERG, ps->cf, 0, "nwall: %V:%ui: empty pattern", ps->file, ps->line);
 
                 return NGX_CONF_ERROR;
+            }
+
+            if (op == NWALL_OP_COMPONENT) {
+                if (value.data[0] == '/' || value.data[value.len - 1] == '/') {
+                    ngx_conf_log_error(NGX_LOG_EMERG, ps->cf, 0, "nwall: %V:%ui: path_component value must not begin or end with \"/\"", ps->file, ps->line);
+
+                    return NGX_CONF_ERROR;
+                }
+
+                for (i = 1; i < value.len; i++) {
+                    if (value.data[i - 1] == '/' && value.data[i] == '/') {
+                        ngx_conf_log_error(NGX_LOG_EMERG, ps->cf, 0, "nwall: %V:%ui: path_component value must not contain \"//\"", ps->file, ps->line);
+
+                        return NGX_CONF_ERROR;
+                    }
+                }
             }
         }
 

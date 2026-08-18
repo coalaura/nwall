@@ -5,6 +5,8 @@ static ngx_int_t ngx_http_nwall_init(ngx_conf_t *cf);
 static void *ngx_http_nwall_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_nwall_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_nwall_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *ngx_http_nwall_set_mode(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_http_nwall_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_nwall_rules(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static ngx_command_t  ngx_http_nwall_commands[] = {
@@ -19,10 +21,19 @@ static ngx_command_t  ngx_http_nwall_commands[] = {
 
     {
 		ngx_string("nwall"),
-		NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
-		ngx_conf_set_flag_slot,
+		NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+		ngx_http_nwall_set_mode,
 		NGX_HTTP_SRV_CONF_OFFSET,
-		offsetof(ngx_http_nwall_srv_conf_t, enable),
+		0,
+		NULL
+	},
+
+    {
+		ngx_string("nwall_log"),
+		NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+		ngx_http_nwall_set_log,
+		NGX_HTTP_SRV_CONF_OFFSET,
+		0,
 		NULL
 	},
 
@@ -60,10 +71,11 @@ ngx_module_t  ngx_http_nwall_module = {
 
 static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
 {
-    ngx_http_nwall_rule_t      *hit;
-    ngx_http_nwall_srv_conf_t  *nscf;
-    ngx_http_nwall_main_conf_t *nmcf;
-    ngx_str_t                   ua;
+    char                        *event;
+    ngx_http_nwall_rule_t       *hit;
+    ngx_http_nwall_srv_conf_t   *nscf;
+    ngx_http_nwall_main_conf_t  *nmcf;
+    ngx_str_t                    ua;
 
     /* subrequests share the client UA/URI; only judge the main request */
     if (r != r->main) {
@@ -71,7 +83,7 @@ static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
     }
 
     nscf = ngx_http_get_module_srv_conf(r, ngx_http_nwall_module);
-    if (nscf->enable != 1) {
+    if (nscf->mode == NWALL_MODE_OFF) {
         return NGX_DECLINED;
     }
 
@@ -85,13 +97,25 @@ static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    if (r->headers_in.user_agent != NULL) {
-        ua = r->headers_in.user_agent->value;
-    } else {
-        ngx_str_set(&ua, "-");
+    if (nscf->log != NWALL_LOG_OFF) {
+        event = nscf->mode == NWALL_MODE_MONITOR ? "monitor" : "drop";
+
+        if (nscf->log == NWALL_LOG_FULL) {
+            if (r->headers_in.user_agent != NULL) {
+                ua = r->headers_in.user_agent->value;
+            } else {
+                ngx_str_set(&ua, "-");
+            }
+
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "nwall: %s client:%V rule:%V value:\"%V\" ua:\"%V\" uri:\"%V\"", event, &r->connection->addr_text, &hit->kind, &hit->pattern, &ua, &r->uri);
+        } else {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "nwall: %s client:%V rule:%V value:\"%V\"", event, &r->connection->addr_text, &hit->kind, &hit->pattern);
+        }
     }
 
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "nwall: drop client:%V rule:%V pattern:\"%V\" ua:\"%V\" uri:\"%V\"", &r->connection->addr_text, &hit->kind, &hit->pattern, &ua, &r->uri);
+    if (nscf->mode == NWALL_MODE_MONITOR) {
+        return NGX_DECLINED;
+    }
 
     return NGX_HTTP_CLOSE;
 }
@@ -134,7 +158,8 @@ static void * ngx_http_nwall_create_srv_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    conf->enable = NGX_CONF_UNSET;
+    conf->mode = NGX_CONF_UNSET;
+    conf->log = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -145,16 +170,70 @@ static char * ngx_http_nwall_merge_srv_conf(ngx_conf_t *cf, void *parent, void *
     ngx_http_nwall_srv_conf_t   *conf = child;
     ngx_http_nwall_main_conf_t  *nmcf;
 
-    ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->mode, prev->mode, NWALL_MODE_OFF);
+    ngx_conf_merge_value(conf->log, prev->log, NWALL_LOG_BASIC);
 
-    if (conf->enable == 1) {
+    if (conf->mode != NWALL_MODE_OFF) {
         nmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_nwall_module);
 
         if (nmcf->ruleset == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "nwall: on but nwall_rules was not set");
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "nwall: enabled but nwall_rules was not set");
 
             return NGX_CONF_ERROR;
         }
+    }
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_nwall_set_mode(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t                  *value;
+    ngx_http_nwall_srv_conf_t  *nscf = conf;
+
+    if (nscf->mode != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        nscf->mode = NWALL_MODE_OFF;
+    } else if (ngx_strcmp(value[1].data, "monitor") == 0) {
+        nscf->mode = NWALL_MODE_MONITOR;
+    } else if (ngx_strcmp(value[1].data, "on") == 0) {
+        nscf->mode = NWALL_MODE_ON;
+    } else {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid value \"%V\" in \"%V\" directive", &value[1], &cmd->name);
+
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+static char * ngx_http_nwall_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t                  *value;
+    ngx_http_nwall_srv_conf_t  *nscf = conf;
+
+    if (nscf->log != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        nscf->log = NWALL_LOG_OFF;
+    } else if (ngx_strcmp(value[1].data, "basic") == 0) {
+        nscf->log = NWALL_LOG_BASIC;
+    } else if (ngx_strcmp(value[1].data, "full") == 0) {
+        nscf->log = NWALL_LOG_FULL;
+    } else {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid value \"%V\" in \"%V\" directive", &value[1], &cmd->name);
+
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;

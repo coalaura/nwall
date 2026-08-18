@@ -13,6 +13,15 @@
 #define NWALL_OP_EXACT      2
 #define NWALL_OP_CONTAINS   3
 #define NWALL_OP_EMPTY      4
+#define NWALL_OP_COMPONENT  5
+
+#define NWALL_MODE_OFF      0
+#define NWALL_MODE_MONITOR  1
+#define NWALL_MODE_ON       2
+
+#define NWALL_LOG_OFF       0
+#define NWALL_LOG_BASIC     1
+#define NWALL_LOG_FULL      2
 
 typedef struct {
     ngx_uint_t  target;
@@ -31,7 +40,8 @@ typedef struct {
 } ngx_http_nwall_main_conf_t;
 
 typedef struct {
-    ngx_flag_t  enable;
+    ngx_int_t  mode;
+    ngx_int_t  log;
 } ngx_http_nwall_srv_conf_t;
 
 char *ngx_http_nwall_load_rules(ngx_conf_t *cf, ngx_str_t *path, ngx_http_nwall_ruleset_t **out);
