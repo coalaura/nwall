@@ -90,7 +90,7 @@ ua_contains "dalfox";
 ua_contains "dirbuster";
 ua_contains "dirsearch";
 ua_contains "feroxbuster";
-ua_contains "ffuf";
+ua_contains "fuzz faster";
 ua_contains "gobuster";
 ua_contains "havij";
 ua_contains "invicti";
