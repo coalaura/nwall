@@ -65,25 +65,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential libpcre2-dev zlib1g-dev libssl-dev \
-            curl ca-certificates
-
       - name: Build module + local nginx ${{ matrix.nginx }}
         run: |
           set -euo pipefail
+          command -v gcc >/dev/null
+          command -v make >/dev/null
+          command -v curl >/dev/null
+
           src="$RUNNER_TEMP/nginx-$NGINX_VER"
-          curl -fL --retry 3 -o "$src.tar.gz" \
+          prefix="$RUNNER_TEMP/prefix"
+          curl -fL --retry 3 --retry-delay 2 -o "$src.tar.gz" \
             "https://nginx.org/download/nginx-$NGINX_VER.tar.gz"
           tar -xf "$src.tar.gz" -C "$RUNNER_TEMP"
           cd "$src"
-          ./configure \
-            --prefix="$RUNNER_TEMP/prefix" \
-            --with-compat \
-            --add-dynamic-module="$GITHUB_WORKSPACE"
+
+          cfg() {
+            ./configure \
+              --prefix="$prefix" \
+              --with-compat \
+              --add-dynamic-module="$GITHUB_WORKSPACE" \
+              "$@"
+          }
+
+          if ! cfg; then
+            echo "system pcre/zlib missing; fetching sources"
+            deps="$RUNNER_TEMP/deps"
+            mkdir -p "$deps"
+            curl -fL --retry 3 -o "$deps/pcre2.tar.gz" \
+              https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.gz
+            curl -fL --retry 3 -o "$deps/zlib.tar.gz" \
+              https://zlib.net/fossils/zlib-1.3.1.tar.gz
+            tar -xf "$deps/pcre2.tar.gz" -C "$deps"
+            tar -xf "$deps/zlib.tar.gz" -C "$deps"
+            cfg --with-pcre="$deps/pcre2-10.44" --with-zlib="$deps/zlib-1.3.1"
+          fi
+
           make -j"$(nproc)"
           test -f objs/ngx_http_nwall_module.so
           test -x objs/nginx
@@ -91,92 +107,9 @@ jobs:
       - name: Smoke test
         run: |
           set -euo pipefail
-
           src="$RUNNER_TEMP/nginx-$NGINX_VER"
           prefix="$RUNNER_TEMP/prefix"
-          nginx="$src/objs/nginx"
-          conf="$GITHUB_WORKSPACE/dev/nginx.conf"
-
-          mkdir -p "$prefix"/{logs,html,modules}
+          mkdir -p "$prefix/modules"
           cp "$src/objs/ngx_http_nwall_module.so" \
             "$prefix/modules/ngx_http_nwall_module.so"
-          printf 'ok\n' >"$prefix/html/index.html"
-
-          "$nginx" -p "$prefix" -c "$conf" -t
-
-          master=""
-          cleanup() {
-            if [[ -n "${master:-}" ]] && kill -0 "$master" 2>/dev/null; then
-              kill -QUIT "$master" 2>/dev/null || kill -TERM "$master" 2>/dev/null || true
-              wait "$master" 2>/dev/null || true
-            fi
-          }
-          trap cleanup EXIT
-
-          "$nginx" -p "$prefix" -c "$conf" &
-          master=$!
-
-          ready=
-          for _ in $(seq 1 50); do
-            if ! kill -0 "$master" 2>/dev/null; then
-              echo "nginx exited before becoming ready"
-              wait "$master" || true
-              exit 1
-            fi
-            if curl -fsS --max-time 1 http://127.0.0.1:18080/ >/dev/null; then
-              ready=1
-              break
-            fi
-            sleep 0.1
-          done
-          [[ -n "$ready" ]] || { echo "nginx did not become ready"; exit 1; }
-
-          expect_body() {
-            local want=$1
-            shift
-            local got
-            got="$(curl -fsS --max-time 5 "$@")"
-            if [[ "$got" != "$want" ]]; then
-              printf 'expected %q, got %q\n' "$want" "$got" >&2
-              exit 1
-            fi
-            echo "pass: $* -> $want"
-          }
-
-          # NGX_HTTP_CLOSE: peer reset / empty reply (not HTTP 403)
-          expect_drop() {
-            local label=$1
-            shift
-            local rc=0
-            curl -fsS --max-time 5 "$@" >/dev/null || rc=$?
-            if [[ $rc -eq 0 ]]; then
-              echo "expected drop: $label" >&2
-              exit 1
-            fi
-            echo "pass: dropped ($rc): $label"
-          }
-
-          still_up() {
-            kill -0 "$master" 2>/dev/null || {
-              echo "nginx crashed" >&2
-              wait "$master" || true
-              exit 1
-            }
-          }
-
-          expect_body "ok"  http://127.0.0.1:18080/
-          expect_body "ok"  -A "Mozilla/5.0" http://127.0.0.1:18080/
-          expect_body "off" http://127.0.0.1:18081/
-          expect_body "off" -A sqlmap http://127.0.0.1:18081/
-          expect_body "off" http://127.0.0.1:18081/secret.env
-          still_up
-
-          expect_drop "ua sqlmap"        -A sqlmap http://127.0.0.1:18080/
-          expect_drop "empty ua"         -H "User-Agent:" http://127.0.0.1:18080/
-          expect_drop "path .env"        http://127.0.0.1:18080/secret.env
-          expect_drop "path .git"        http://127.0.0.1:18080/.git/HEAD
-          expect_drop "path wp-admin.php" http://127.0.0.1:18080/foo/wp-admin.php
-          still_up
-
-          expect_body "ok" http://127.0.0.1:18080/
-          echo "nginx ${NGINX_VER}: ok"
+          bash scripts/smoke.sh "$src/objs/nginx" "$prefix" "$GITHUB_WORKSPACE/dev/nginx.conf"
