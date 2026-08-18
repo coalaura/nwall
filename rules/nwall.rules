@@ -1,0 +1,88 @@
+# Empty / missing User-Agent
+ua_empty;
+
+##
+# SEO Crawlers / Backlink Scrapers
+##
+ua_contains "semrushbot";
+ua_contains "ahrefsbot";
+ua_contains "mj12bot";
+ua_contains "dotbot";
+ua_contains "blexbot";
+ua_contains "linkfluence";
+ua_contains "seokicks";
+ua_contains "seopowersuite";
+ua_contains "serpstatbot";
+ua_contains "webmeup-crawler";
+ua_contains "backlinkcrawler";
+ua_contains "seranking";
+ua_contains "sistrix";
+ua_contains "lipperhey";
+
+##
+# AI Scrapers
+##
+ua_contains "gptbot";
+ua_contains "chatgpt-user";
+ua_contains "oai-searchbot";
+ua_contains "anthropic-ai";
+ua_contains "claude-web";
+ua_contains "claudebot";
+ua_contains "ccbot";
+ua_contains "cohere-ai";
+ua_contains "bytespider";
+ua_contains "amazonbot";
+ua_contains "omgili";
+ua_contains "diffbot";
+ua_contains "applebot-extended";
+ua_contains "meta-externalagent";
+ua_contains "facebookexternalhit";
+ua_contains "perplexitybot";
+ua_contains "google-extended";
+ua_contains "imagesiftbot";
+ua_contains "mistral-ai";
+ua_contains "youbot";
+
+##
+# Aggressive / Unwanted Crawlers
+##
+ua_contains "barkrowler";
+ua_contains "seznambot";
+ua_contains "yandexbot";
+ua_contains "petalbot";
+ua_contains "petal bot";
+ua_contains "megaindex";
+ua_contains "bingpreview";
+ua_contains "censysinspect";
+ua_contains "neevabot";
+ua_contains "mauibot";
+ua_contains "domainsproject";
+ua_contains "ioncrawl";
+
+##
+# Vulnerability Scanners / Malicious
+##
+ua_contains "nmap";
+ua_contains "nikto";
+ua_contains "sqlmap";
+ua_contains "masscan";
+ua_contains "zmeu";
+ua_contains "morfeus";
+ua_contains "openvas";
+ua_contains "nessus";
+ua_contains "w3af";
+ua_contains "havij";
+ua_contains "acunetix";
+ua_contains "burpcollaborator";
+ua_contains "dirbuster";
+ua_contains "gobuster";
+ua_contains "wfuzz";
+ua_contains "nuclei";
+ua_contains "jaeles";
+
+##
+# Path probes (WIP)
+##
+path_suffix "/.git";
+path_suffix "/.env";
+path_suffix "/wp-admin.php";

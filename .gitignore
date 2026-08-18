@@ -1,0 +1,7 @@
+/.build/
+/.dev/
+/build.log
+*.o
+*.so
+*.swp
+*~

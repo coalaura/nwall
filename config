@@ -1,0 +1,5 @@
+ngx_addon_name=ngx_http_nwall_module
+ngx_module_type=HTTP
+ngx_module_name=ngx_http_nwall_module
+ngx_module_srcs="$ngx_addon_dir/src/ngx_http_nwall_module.c $ngx_addon_dir/src/ngx_http_nwall_rules.c"
+. auto/module
