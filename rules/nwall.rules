@@ -319,6 +319,7 @@ path_suffix "/trace.axd";
 ##
 path_contains "/cgi-bin/cgi-bin/";
 path_suffix "/eval-stdin.php";
+path_contains "/vendor/phpunit/";
 
 ##
 # WordPress Secret / Misplaced Core Files
