@@ -81,8 +81,82 @@ ua_contains "nuclei";
 ua_contains "jaeles";
 
 ##
-# Path probes (WIP)
+# Path probes
 ##
+
+# VCS metadata (/.git/HEAD, /project/.git/config, /.svn/entries)
+path_contains "/.git/";
 path_suffix "/.git";
+path_contains "/.svn/";
+path_suffix "/.svn";
+path_contains "/.hg/";
+path_suffix "/.hg";
+path_contains "/.bzr/";
+path_suffix "/.bzr";
+
+# Env files: /.env, /.env.local, /api/.env, /secret.env
+path_contains "/.env";
 path_suffix ".env";
+
+# App / server secrets
+path_suffix "/.htpasswd";
+path_suffix "/.htaccess";
+path_suffix "/.npmrc";
+path_suffix "/.yarnrc";
+path_suffix "/.pypirc";
+path_suffix "/.netrc";
+path_suffix "/.bash_history";
+path_suffix "/.mysql_history";
+path_suffix "/.git-credentials";
+path_suffix "/.gitconfig";
+path_suffix "/rclone.conf";
+path_suffix "/.boto";
+path_suffix "/.s3cfg";
+path_suffix "/wp-config.php";
+path_suffix "/wp-config.php.bak";
+path_suffix "/localsettings.php";
+path_suffix "/settings.php.bak";
+
+# SSH / TLS private material
+path_contains "/.ssh/";
+path_suffix "/.ssh";
+path_suffix "/id_rsa";
+path_suffix "/id_dsa";
+path_suffix "/id_ecdsa";
+path_suffix "/id_ed25519";
+path_suffix "/authorized_keys";
+path_suffix "/known_hosts";
+path_suffix "/server.key";
+path_suffix "/private.key";
+path_suffix "/privatekey.key";
+path_suffix "/privkey.pem";
+
+# Cloud / CI credential dumps
+path_contains "/.aws/";
+path_contains "/.docker/";
+path_contains "/.kube/";
+path_contains "/.azure/";
+path_contains "/.github/";
+path_contains "/.vscode/";
+path_suffix "/credentials.json";
+path_suffix "/secrets.json";
+path_suffix "/secrets.yml";
+path_suffix "/secrets.yaml";
+path_suffix "/serviceaccountkey.json";
+path_suffix "/service-account.json";
+path_suffix "/service_account.json";
+path_suffix "/firebase-adminsdk.json";
+path_suffix "/firebase-service-account.json";
+path_suffix "/key.json";
+
+# IaC / state (often has secrets)
+path_suffix ".tfstate";
+path_suffix ".tfvars";
+path_contains "/.terraform/";
+
+# Scanner junk that is never a real app route
 path_suffix "/wp-admin.php";
+path_suffix "/phpinfo.php";
+path_suffix "/info.php";
+path_suffix "/.ds_store";
+path_suffix "/thumbs.db";
