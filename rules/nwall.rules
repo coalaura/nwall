@@ -84,5 +84,5 @@ ua_contains "jaeles";
 # Path probes (WIP)
 ##
 path_suffix "/.git";
-path_suffix "/.env";
+path_suffix ".env";
 path_suffix "/wp-admin.php";
