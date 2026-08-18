@@ -31,11 +31,10 @@ ua_contains "webmeup-crawler";
 ua_contains "ai2bot";
 ua_contains "amazonbot";
 ua_contains "anthropic-ai";
+ua_contains "applebot-extended";
 ua_contains "bytespider";
 ua_contains "ccbot";
-ua_contains "chatgpt-user";
 ua_contains "claude-searchbot";
-ua_contains "claude-user";
 ua_contains "claude-web";
 ua_contains "claudebot";
 ua_contains "cohere-ai";
@@ -43,6 +42,7 @@ ua_contains "diffbot";
 ua_contains "duckassistbot";
 ua_contains "facebookbot";
 ua_contains "google-cloudvertexbot";
+ua_contains "google-extended";
 ua_contains "gptbot";
 ua_contains "imagesiftbot";
 ua_contains "img2dataset";
@@ -52,12 +52,18 @@ ua_contains "mistral-ai";
 ua_contains "mistralai-user";
 ua_contains "oai-searchbot";
 ua_contains "omgili";
-ua_contains "perplexity-user";
 ua_contains "perplexitybot";
 ua_contains "timpibot";
 ua_contains "velenpublicwebcrawler";
 ua_contains "webzio-extended";
 ua_contains "youbot";
+
+##
+# User-Initiated AI Fetchers
+##
+ua_contains "chatgpt-user";
+ua_contains "claude-user";
+ua_contains "perplexity-user";
 
 ##
 # Aggressive / Unwanted Crawlers
