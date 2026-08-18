@@ -32,7 +32,7 @@ static ngx_int_t ngx_http_nwall_contains(ngx_str_t *hay, ngx_str_t *needle)
     last = hay->len - needle->len;
 
     for (i = 0; i <= last; i++) {
-        if (ngx_memcmp(hay->data + i, needle->data, needle->len) == 0) {
+        if (ngx_strncasecmp(hay->data + i, needle->data, needle->len) == 0) {
             return 1;
         }
     }
@@ -42,7 +42,7 @@ static ngx_int_t ngx_http_nwall_contains(ngx_str_t *hay, ngx_str_t *needle)
 
 ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwall_ruleset_t *rs)
 {
-    ngx_str_t              ua, lowered_ua, lowered_uri, *subject;
+    ngx_str_t              ua, *subject;
     ngx_uint_t             i;
     ngx_http_nwall_rule_t *rule, *rules;
 
@@ -56,38 +56,13 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
         ngx_str_null(&ua);
     }
 
-    ngx_str_null(&lowered_ua);
-    ngx_str_null(&lowered_uri);
-
-    if (ua.len) {
-        lowered_ua.data = ngx_pnalloc(r->pool, ua.len);
-        if (lowered_ua.data == NULL) {
-            return NULL;
-        }
-
-        ngx_strlow(lowered_ua.data, ua.data, ua.len);
-
-        lowered_ua.len = ua.len;
-    }
-
-    if (r->uri.len) {
-        lowered_uri.data = ngx_pnalloc(r->pool, r->uri.len);
-        if (lowered_uri.data == NULL) {
-            return NULL;
-        }
-
-        ngx_strlow(lowered_uri.data, r->uri.data, r->uri.len);
-
-        lowered_uri.len = r->uri.len;
-    }
-
     rules = rs->rules->elts;
 
     for (i = 0; i < rs->rules->nelts; i++) {
         rule = &rules[i];
 
         if (rule->target == NWALL_TARGET_UA) {
-            subject = &lowered_ua;
+            subject = &ua;
 
             if (rule->op == NWALL_OP_EMPTY) {
                 if (ua.len == 0) {
@@ -98,24 +73,24 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
             }
 
         } else {
-            subject = &lowered_uri;
+            subject = &r->uri;
         }
 
         switch (rule->op) {
         case NWALL_OP_EXACT:
-            if (subject->len == rule->pattern.len && (subject->len == 0 || ngx_memcmp(subject->data, rule->pattern.data, subject->len) == 0)) {
+            if (subject->len == rule->pattern.len && (subject->len == 0 || ngx_strncasecmp(subject->data, rule->pattern.data, subject->len) == 0)) {
                 return rule;
             }
 
             break;
         case NWALL_OP_PREFIX:
-            if (subject->len >= rule->pattern.len && ngx_memcmp(subject->data, rule->pattern.data, rule->pattern.len) == 0) {
+            if (subject->len >= rule->pattern.len && ngx_strncasecmp(subject->data, rule->pattern.data, rule->pattern.len) == 0) {
                 return rule;
             }
 
             break;
         case NWALL_OP_SUFFIX:
-            if (subject->len >= rule->pattern.len && ngx_memcmp(subject->data + (subject->len - rule->pattern.len), rule->pattern.data, rule->pattern.len) == 0) {
+            if (subject->len >= rule->pattern.len && ngx_strncasecmp(subject->data + (subject->len - rule->pattern.len), rule->pattern.data, rule->pattern.len) == 0) {
                 return rule;
             }
 
