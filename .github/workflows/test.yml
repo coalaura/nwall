@@ -5,11 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-  workflow_call:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_call' && !startsWith(github.ref, 'refs/tags/') }}
+  group: test-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -19,7 +18,7 @@ env:
 
 jobs:
   versions:
-    name: list nginx ${{ vars.NGINX_SERIES || '1.30' }}.x
+    name: list nginx 1.30.x
     runs-on: ubuntu-22.04
     outputs:
       versions: ${{ steps.list.outputs.versions }}
@@ -40,9 +39,8 @@ jobs:
               print(f"failed to fetch {url}: {exc}", file=sys.stderr)
               sys.exit(1)
 
-          pat = rf"nginx-({re.escape(series)}\.\d+)\.tar\.gz"
           versions = sorted(
-              set(re.findall(pat, html)),
+              set(re.findall(rf"nginx-({re.escape(series)}\.\d+)\.tar\.gz", html)),
               key=lambda v: tuple(int(p) for p in v.split(".")),
           )
           if not versions:
@@ -54,7 +52,7 @@ jobs:
               fh.write(f"versions={json.dumps(versions)}\n")
           PY
 
-  build:
+  test:
     name: nginx ${{ matrix.nginx }}
     needs: versions
     runs-on: ubuntu-22.04
@@ -64,8 +62,6 @@ jobs:
         nginx: ${{ fromJSON(needs.versions.outputs.versions) }}
     env:
       NGINX_VER: ${{ matrix.nginx }}
-      NGINX_SRC: ${{ runner.temp }}/nginx-${{ matrix.nginx }}
-      PREFIX: ${{ runner.temp }}/prefix
     steps:
       - uses: actions/checkout@v4
 
@@ -76,18 +72,16 @@ jobs:
             build-essential libpcre2-dev zlib1g-dev libssl-dev \
             curl ca-certificates
 
-      - name: Fetch nginx ${{ matrix.nginx }}
+      - name: Build module + local nginx ${{ matrix.nginx }}
         run: |
-          curl -fL --retry 3 -o "${NGINX_SRC}.tar.gz" \
-            "https://nginx.org/download/nginx-${NGINX_VER}.tar.gz"
-          tar -xf "${NGINX_SRC}.tar.gz" -C "${{ runner.temp }}"
-          test -d "$NGINX_SRC"
-
-      - name: Configure and build
-        working-directory: ${{ runner.temp }}/nginx-${{ matrix.nginx }}
-        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/nginx-$NGINX_VER"
+          curl -fL --retry 3 -o "$src.tar.gz" \
+            "https://nginx.org/download/nginx-$NGINX_VER.tar.gz"
+          tar -xf "$src.tar.gz" -C "$RUNNER_TEMP"
+          cd "$src"
           ./configure \
-            --prefix="$PREFIX" \
+            --prefix="$RUNNER_TEMP/prefix" \
             --with-compat \
             --add-dynamic-module="$GITHUB_WORKSPACE"
           make -j"$(nproc)"
@@ -98,148 +92,91 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p "$PREFIX"/{logs,html,modules}
-          cp "$NGINX_SRC/objs/ngx_http_nwall_module.so" \
-            "$PREFIX/modules/ngx_http_nwall_module.so"
-          printf 'ok\n' >"$PREFIX/html/index.html"
-
-          nginx="$NGINX_SRC/objs/nginx"
+          src="$RUNNER_TEMP/nginx-$NGINX_VER"
+          prefix="$RUNNER_TEMP/prefix"
+          nginx="$src/objs/nginx"
           conf="$GITHUB_WORKSPACE/dev/nginx.conf"
 
-          "$nginx" -p "$PREFIX" -c "$conf" -t
+          mkdir -p "$prefix"/{logs,html,modules}
+          cp "$src/objs/ngx_http_nwall_module.so" \
+            "$prefix/modules/ngx_http_nwall_module.so"
+          printf 'ok\n' >"$prefix/html/index.html"
+
+          "$nginx" -p "$prefix" -c "$conf" -t
 
           master=""
           cleanup() {
-            if [[ -n "$master" ]] && kill -0 "$master" 2>/dev/null; then
+            if [[ -n "${master:-}" ]] && kill -0 "$master" 2>/dev/null; then
               kill -QUIT "$master" 2>/dev/null || kill -TERM "$master" 2>/dev/null || true
               wait "$master" 2>/dev/null || true
             fi
           }
           trap cleanup EXIT
 
-          "$nginx" -p "$PREFIX" -c "$conf" &
+          "$nginx" -p "$prefix" -c "$conf" &
           master=$!
 
-          ok=""
+          ready=
           for _ in $(seq 1 50); do
+            if ! kill -0 "$master" 2>/dev/null; then
+              echo "nginx exited before becoming ready"
+              wait "$master" || true
+              exit 1
+            fi
             if curl -fsS --max-time 1 http://127.0.0.1:18080/ >/dev/null; then
-              ok=1
+              ready=1
               break
             fi
             sleep 0.1
           done
-          [[ -n "$ok" ]] || { echo "nginx did not become ready"; exit 1; }
+          [[ -n "$ready" ]] || { echo "nginx did not become ready"; exit 1; }
 
-          test "$(curl -fsS http://127.0.0.1:18080/)" = "ok"
-          test "$(curl -fsS http://127.0.0.1:18081/)" = "off"
-          test "$(curl -fsS -A sqlmap http://127.0.0.1:18081/)" = "off"
+          expect_body() {
+            local want=$1
+            shift
+            local got
+            got="$(curl -fsS --max-time 5 "$@")"
+            if [[ "$got" != "$want" ]]; then
+              printf 'expected %q, got %q\n' "$want" "$got" >&2
+              exit 1
+            fi
+            echo "pass: $* -> $want"
+          }
 
+          # NGX_HTTP_CLOSE: peer reset / empty reply (not HTTP 403)
           expect_drop() {
             local label=$1
             shift
             local rc=0
-            "$@" || rc=$?
+            curl -fsS --max-time 5 "$@" >/dev/null || rc=$?
             if [[ $rc -eq 0 ]]; then
-              echo "expected drop: $label"
+              echo "expected drop: $label" >&2
               exit 1
             fi
-            echo "dropped ($rc): $label"
+            echo "pass: dropped ($rc): $label"
           }
 
-          expect_drop "ua sqlmap" curl -fsS -A sqlmap http://127.0.0.1:18080/
-          expect_drop "empty ua" curl -fsS -H "User-Agent:" http://127.0.0.1:18080/
-          expect_drop "path .env" curl -fsS http://127.0.0.1:18080/secret.env
-          expect_drop "path .git" curl -fsS http://127.0.0.1:18080/.git/HEAD
+          still_up() {
+            kill -0 "$master" 2>/dev/null || {
+              echo "nginx crashed" >&2
+              wait "$master" || true
+              exit 1
+            }
+          }
 
-      - name: Stage module
-        run: |
-          mkdir -p artifact
-          cp "$NGINX_SRC/objs/ngx_http_nwall_module.so" \
-            "artifact/ngx_http_nwall_module-${NGINX_VER}.so"
+          expect_body "ok"  http://127.0.0.1:18080/
+          expect_body "ok"  -A "Mozilla/5.0" http://127.0.0.1:18080/
+          expect_body "off" http://127.0.0.1:18081/
+          expect_body "off" -A sqlmap http://127.0.0.1:18081/
+          expect_body "off" http://127.0.0.1:18081/secret.env
+          still_up
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nwall-nginx-${{ matrix.nginx }}
-          path: artifact/ngx_http_nwall_module-${{ matrix.nginx }}.so
-          if-no-files-found: error
-          retention-days: 14
+          expect_drop "ua sqlmap"        -A sqlmap http://127.0.0.1:18080/
+          expect_drop "empty ua"         -H "User-Agent:" http://127.0.0.1:18080/
+          expect_drop "path .env"        http://127.0.0.1:18080/secret.env
+          expect_drop "path .git"        http://127.0.0.1:18080/.git/HEAD
+          expect_drop "path wp-admin.php" http://127.0.0.1:18080/foo/wp-admin.php
+          still_up
 
-  package:
-    name: package
-    needs: [versions, build]
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: nwall-nginx-*
-          merge-multiple: true
-          path: artifacts
-
-      - name: Create tarballs
-        env:
-          EXPECTED: ${{ needs.versions.outputs.versions }}
-          SERIES: ${{ env.NGINX_SERIES }}
-        run: |
-          set -euo pipefail
-
-          python3 - <<'PY'
-          import json, os, pathlib, sys
-
-          expected = json.loads(os.environ["EXPECTED"])
-          got = sorted(
-              p.name[len("ngx_http_nwall_module-"):-len(".so")]
-              for p in pathlib.Path("artifacts").glob("ngx_http_nwall_module-*.so")
-          )
-          if got != expected:
-              print(f"artifact mismatch: got {got}, expected {expected}", file=sys.stderr)
-              sys.exit(1)
-          print("packaging:", ", ".join(got))
-          PY
-
-          case "$GITHUB_REF" in
-            refs/tags/v*) VER="${GITHUB_REF_NAME#v}" ;;
-            refs/tags/*)  VER="$GITHUB_REF_NAME" ;;
-            *)            VER="${GITHUB_SHA::7}" ;;
-          esac
-
-          mkdir -p dist/stage/modules
-
-          latest=""
-          for so in $(printf '%s\n' artifacts/ngx_http_nwall_module-*.so | sort -V); do
-            cp "$so" "dist/stage/modules/$(basename "$so")"
-            latest=$so
-          done
-          cp "$latest" dist/stage/modules/ngx_http_nwall_module.so
-          cp rules/nwall.rules dist/stage/nwall.rules
-
-          tar -C dist/stage -czf \
-            "dist/nwall-${VER}-nginx-${SERIES}-linux-x86_64.tar.gz" \
-            modules nwall.rules
-
-          for so in $(printf '%s\n' artifacts/ngx_http_nwall_module-*.so | sort -V); do
-            nv=$(basename "$so" .so)
-            nv=${nv#ngx_http_nwall_module-}
-            dest="dist/v/${nv}"
-            mkdir -p "$dest/modules"
-            cp "$so" "$dest/modules/ngx_http_nwall_module.so"
-            cp rules/nwall.rules "$dest/nwall.rules"
-            tar -C "$dest" -czf \
-              "dist/nwall-${VER}-nginx-${nv}-linux-x86_64.tar.gz" \
-              modules nwall.rules
-          done
-
-          (cd dist && sha256sum nwall-*.tar.gz > SHA256SUMS)
-          echo "version $VER"
-          cat dist/SHA256SUMS
-          tar -tzf "dist/nwall-${VER}-nginx-${SERIES}-linux-x86_64.tar.gz" | sort
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nwall-nginx-1.30
-          path: |
-            dist/nwall-*.tar.gz
-            dist/SHA256SUMS
-          if-no-files-found: error
-          retention-days: 30
+          expect_body "ok" http://127.0.0.1:18080/
+          echo "nginx ${NGINX_VER}: ok"
