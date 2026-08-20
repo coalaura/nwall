@@ -14,16 +14,16 @@ permissions:
   contents: read
 
 env:
-  NGINX_SERIES: "1.30"
+  NGINX_SERIES: "1.30 1.31"
 
 jobs:
   versions:
-    name: list nginx 1.30.x
+    name: list supported nginx versions
     runs-on: ubuntu-22.04
     outputs:
       versions: ${{ steps.list.outputs.versions }}
     steps:
-      - name: List nginx ${{ env.NGINX_SERIES }}.x tarballs
+      - name: List supported nginx tarballs
         id: list
         env:
           SERIES: ${{ env.NGINX_SERIES }}
@@ -31,7 +31,7 @@ jobs:
           python3 - <<'PY'
           import json, os, re, sys, urllib.request
 
-          series = os.environ["SERIES"]
+          series = os.environ["SERIES"].split()
           url = "https://nginx.org/download/"
           try:
               html = urllib.request.urlopen(url, timeout=30).read().decode()
@@ -39,12 +39,21 @@ jobs:
               print(f"failed to fetch {url}: {exc}", file=sys.stderr)
               sys.exit(1)
 
+          versions = []
+          for item in series:
+              found = re.findall(
+                  rf"nginx-({re.escape(item)}\.\d+)\.tar\.gz", html
+              )
+              if not found:
+                  print(f"no nginx {item}.x tarballs on {url}", file=sys.stderr)
+                  sys.exit(1)
+              versions.extend(found)
+
           versions = sorted(
-              set(re.findall(rf"nginx-({re.escape(series)}\.\d+)\.tar\.gz", html)),
-              key=lambda v: tuple(int(p) for p in v.split(".")),
+              set(versions), key=lambda v: tuple(int(p) for p in v.split("."))
           )
           if not versions:
-              print(f"no nginx {series}.x tarballs on {url}", file=sys.stderr)
+              print("no supported nginx tarballs found", file=sys.stderr)
               sys.exit(1)
 
           print("found:", ", ".join(versions))

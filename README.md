@@ -78,7 +78,7 @@ chmod +x scripts/*.sh
 - http://127.0.0.1:18080 - `nwall on`
 - http://127.0.0.1:18081 - `nwall off`
 
-Pin another nginx with `NGINX_VER=1.28.3 ./scripts/setup-dev.sh`. Dynamic modules must match the nginx series they load into.
+Pin another nginx with `NGINX_VER=1.28.3 ./scripts/setup-dev.sh`. Dynamic modules must match the exact nginx version they load into.
 
 `setup-dev.sh` uses `pacman` on Arch. Elsewhere it skips packages and expects `gcc`, `make`, `curl`, pcre2 and zlib.
 

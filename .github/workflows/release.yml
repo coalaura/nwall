@@ -8,16 +8,16 @@ permissions:
   contents: write
 
 env:
-  NGINX_SERIES: "1.30"
+  NGINX_SERIES: "1.30 1.31"
 
 jobs:
   versions:
-    name: list nginx 1.30.x
+    name: list supported nginx versions
     runs-on: ubuntu-22.04
     outputs:
       versions: ${{ steps.list.outputs.versions }}
     steps:
-      - name: List nginx ${{ env.NGINX_SERIES }}.x tarballs
+      - name: List supported nginx tarballs
         id: list
         env:
           SERIES: ${{ env.NGINX_SERIES }}
@@ -25,7 +25,7 @@ jobs:
           python3 - <<'PY'
           import json, os, re, sys, urllib.request
 
-          series = os.environ["SERIES"]
+          series = os.environ["SERIES"].split()
           url = "https://nginx.org/download/"
           try:
               html = urllib.request.urlopen(url, timeout=30).read().decode()
@@ -33,12 +33,21 @@ jobs:
               print(f"failed to fetch {url}: {exc}", file=sys.stderr)
               sys.exit(1)
 
+          versions = []
+          for item in series:
+              found = re.findall(
+                  rf"nginx-({re.escape(item)}\.\d+)\.tar\.gz", html
+              )
+              if not found:
+                  print(f"no nginx {item}.x tarballs on {url}", file=sys.stderr)
+                  sys.exit(1)
+              versions.extend(found)
+
           versions = sorted(
-              set(re.findall(rf"nginx-({re.escape(series)}\.\d+)\.tar\.gz", html)),
-              key=lambda v: tuple(int(p) for p in v.split(".")),
+              set(versions), key=lambda v: tuple(int(p) for p in v.split("."))
           )
           if not versions:
-              print(f"no nginx {series}.x tarballs on {url}", file=sys.stderr)
+              print("no supported nginx tarballs found", file=sys.stderr)
               sys.exit(1)
 
           print("found:", ", ".join(versions))
@@ -147,8 +156,11 @@ jobs:
 
           expected = json.loads(os.environ["EXPECTED"])
           got = sorted(
-              p.name[len("ngx_http_nwall_module-"):-len(".so")]
-              for p in pathlib.Path("artifacts").glob("ngx_http_nwall_module-*.so")
+              (
+                  p.name[len("ngx_http_nwall_module-"):-len(".so")]
+                  for p in pathlib.Path("artifacts").glob("ngx_http_nwall_module-*.so")
+              ),
+              key=lambda v: tuple(int(p) for p in v.split(".")),
           )
           if got != expected:
               print(f"artifact mismatch: got {got}, expected {expected}", file=sys.stderr)
@@ -157,19 +169,24 @@ jobs:
           PY
 
           VER="${GITHUB_REF_NAME#v}"
-          mkdir -p dist/stage/modules
+          mkdir -p dist
 
-          latest=""
-          for so in $(printf '%s\n' artifacts/ngx_http_nwall_module-*.so | sort -V); do
-            cp "$so" "dist/stage/modules/$(basename "$so")"
-            latest=$so
+          for series in $SERIES; do
+            stage="dist/stage-${series}"
+            mkdir -p "$stage/modules"
+
+            latest=""
+            for so in $(printf '%s\n' artifacts/ngx_http_nwall_module-${series}.*.so | sort -V); do
+              cp "$so" "$stage/modules/$(basename "$so")"
+              latest=$so
+            done
+            cp "$latest" "$stage/modules/ngx_http_nwall_module.so"
+            cp rules/nwall.rules "$stage/nwall.rules"
+
+            tar -C "$stage" -czf \
+              "dist/nwall-${VER}-nginx-${series}-linux-x86_64.tar.gz" \
+              modules nwall.rules
           done
-          cp "$latest" dist/stage/modules/ngx_http_nwall_module.so
-          cp rules/nwall.rules dist/stage/nwall.rules
-
-          tar -C dist/stage -czf \
-            "dist/nwall-${VER}-nginx-${SERIES}-linux-x86_64.tar.gz" \
-            modules nwall.rules
 
           for so in $(printf '%s\n' artifacts/ngx_http_nwall_module-*.so | sort -V); do
             nv=$(basename "$so" .so)
@@ -185,32 +202,34 @@ jobs:
 
           (cd dist && sha256sum nwall-*.tar.gz > SHA256SUMS)
           cat dist/SHA256SUMS
-          tar -tzf "dist/nwall-${VER}-nginx-${SERIES}-linux-x86_64.tar.gz" | sort
+          for series in $SERIES; do
+            tar -tzf "dist/nwall-${VER}-nginx-${series}-linux-x86_64.tar.gz" | sort
+          done
 
           notes=$(cat <<EOF
           ## Install
 
-          nginx only loads a dynamic module built for the **exact** same version (\`nginx -v\`). This release includes a build for every published **1.30.x**.
+          nginx only loads a dynamic module built for the **exact** same version (\`nginx -v\`). This release includes a build for every published **1.30.x** and **1.31.x**.
 
           Extract relative to \`/etc/nginx\`:
 
           \`\`\`bash
-          sudo tar -xzf nwall-${VER}-nginx-1.30-linux-x86_64.tar.gz -C /etc/nginx
+          sudo tar -xzf nwall-${VER}-nginx-1.31-linux-x86_64.tar.gz -C /etc/nginx
           \`\`\`
 
           That writes:
 
           \`\`\`
           /etc/nginx/nwall.rules
-          /etc/nginx/modules/ngx_http_nwall_module.so            # latest 1.30.x
-          /etc/nginx/modules/ngx_http_nwall_module-1.30.N.so     # pin if needed
+          /etc/nginx/modules/ngx_http_nwall_module.so            # latest in the selected series
+          /etc/nginx/modules/ngx_http_nwall_module-1.31.N.so     # pin if needed
           \`\`\`
 
           In the **main** context of \`nginx.conf\`:
 
           \`\`\`nginx
           load_module modules/ngx_http_nwall_module.so;
-          # load_module modules/ngx_http_nwall_module-1.30.3.so;
+          # load_module modules/ngx_http_nwall_module-1.31.0.so;
           \`\`\`
 
           In \`http { }\`:
@@ -225,7 +244,7 @@ jobs:
           nwall on;
           \`\`\`
 
-          Per-version archives (\`nwall-${VER}-nginx-1.30.N-linux-x86_64.tar.gz\`) unpack to the same layout with only \`modules/ngx_http_nwall_module.so\`.
+          The \`nginx-1.30\` and \`nginx-1.31\` archives contain all exact-version modules for that series. Per-version archives (for example, \`nwall-${VER}-nginx-1.31.0-linux-x86_64.tar.gz\`) unpack to the same layout with only \`modules/ngx_http_nwall_module.so\`.
           EOF
           )
 
