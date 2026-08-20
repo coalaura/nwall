@@ -206,45 +206,56 @@ jobs:
             tar -tzf "dist/nwall-${VER}-nginx-${series}-linux-x86_64.tar.gz" | sort
           done
 
+          supported=""
+          for series in $SERIES; do
+            if [[ -n "$supported" ]]; then
+              supported="$supported, "
+            fi
+            supported="$supported\`${series}.x\`"
+          done
+
           notes=$(cat <<EOF
-          ## Install
+          ## Compatibility
 
-          nginx only loads a dynamic module built for the **exact** same version (\`nginx -v\`). This release includes a build for every published **1.30.x** and **1.31.x**.
+          Prebuilt modules are available for ${supported}. Use the module for the exact version reported by \`nginx -v\`.
 
-          Extract relative to \`/etc/nginx\`:
+          > **nginx 1.29.x is intentionally unsupported.** It reached end of life in May 2026. Users on that line should upgrade to nginx 1.30.x or newer.
+
+          The target nginx must be built with \`--with-compat\`; its other configure flags do not need to match the release build. Check with:
 
           \`\`\`bash
-          sudo tar -xzf nwall-${VER}-nginx-1.31-linux-x86_64.tar.gz -C /etc/nginx
+          nginx -V 2>&1 | grep -q -- --with-compat
           \`\`\`
 
-          That writes:
+          ## Install
 
-          \`\`\`
-          /etc/nginx/nwall.rules
-          /etc/nginx/modules/ngx_http_nwall_module.so            # latest in the selected series
-          /etc/nginx/modules/ngx_http_nwall_module-1.31.N.so     # pin if needed
+          The per-version archive is the simplest option:
+
+          \`\`\`bash
+          NGINX_VERSION=\$(nginx -v 2>&1)
+          NGINX_VERSION=\${NGINX_VERSION##*/}
+          sudo tar -xzf "nwall-${VER}-nginx-\${NGINX_VERSION}-linux-x86_64.tar.gz" -C /etc/nginx
           \`\`\`
 
-          In the **main** context of \`nginx.conf\`:
+          Add the module in the **main** context of \`nginx.conf\`:
 
           \`\`\`nginx
           load_module modules/ngx_http_nwall_module.so;
-          # load_module modules/ngx_http_nwall_module-1.31.0.so;
           \`\`\`
 
-          In \`http { }\`:
+          Configure nwall in the \`http\` and \`server\` contexts:
 
           \`\`\`nginx
-          nwall_rules /etc/nginx/nwall.rules;
+          http {
+              nwall_rules /etc/nginx/nwall.rules;
+
+              server {
+                  nwall on;
+              }
+          }
           \`\`\`
 
-          In \`server { }\`:
-
-          \`\`\`nginx
-          nwall on;
-          \`\`\`
-
-          The \`nginx-1.30\` and \`nginx-1.31\` archives contain all exact-version modules for that series. Per-version archives (for example, \`nwall-${VER}-nginx-1.31.0-linux-x86_64.tar.gz\`) unpack to the same layout with only \`modules/ngx_http_nwall_module.so\`.
+          Series archives contain every exact-version module in that series. Their unversioned module points to the newest patch release, so load \`modules/ngx_http_nwall_module-<nginx-version>.so\` when running an older patch release.
           EOF
           )
 

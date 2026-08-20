@@ -78,10 +78,10 @@ chmod +x scripts/*.sh
 - http://127.0.0.1:18080 - `nwall on`
 - http://127.0.0.1:18081 - `nwall off`
 
-Pin another nginx with `NGINX_VER=1.28.3 ./scripts/setup-dev.sh`. Dynamic modules must match the exact nginx version they load into.
+Pin another nginx with `NGINX_VER=1.30.4 ./scripts/setup-dev.sh`. Dynamic modules must match the nginx version they load into. With `--with-compat`, the remaining nginx configure flags do not need to match.
 
 `setup-dev.sh` uses `pacman` on Arch. Elsewhere it skips packages and expects `gcc`, `make`, `curl`, pcre2 and zlib.
 
 ## Production
 
-Build against the same nginx as the host (`nginx -v`), copy the `.so` into that nginx's modules path, `load_module` it. `scripts/build.sh` prints the copy command.
+Use the nginx version reported by `nginx -v` and verify the target was built with `--with-compat` using `nginx -V`. Other configure flags do not need to match. Copy the matching `.so` into nginx's modules path and `load_module` it. `scripts/build.sh` prints the copy command.
