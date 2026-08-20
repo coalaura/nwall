@@ -303,9 +303,11 @@ path_suffix "/trace.axd";
 ##
 # Exploit Probes
 ##
+path_component "alfacgiapi";
 path_component "cgi-bin/cgi-bin";
 path_suffix "/eval-stdin.php";
 path_component "vendor/phpunit";
+path_suffix "/xmrlpc.php";
 
 ##
 # WordPress Secret / Misplaced Core Files
@@ -315,6 +317,7 @@ path_contains "/cgi-bin/wp-";
 path_contains "/wp-admin/wp-";
 path_contains "/wp-config.php.";
 path_suffix "/wp-config.php";
+path_suffix "/wp-includes/ixr/chosen.php";
 path_suffix "/wp-includes/ixr/wp-login.php";
 path_suffix "/wp-admin/login.php";
 
@@ -323,10 +326,12 @@ path_suffix "/wp-admin/login.php";
 ##
 path_suffix "/wp-2019.php";
 path_suffix "/wp-access.php";
+path_suffix "/wp-activat.php";
 path_suffix "/wp-admin.php";
 path_suffix "/wp-blink.php";
 path_suffix "/wp-blog.php";
 path_suffix "/wp-blogs.php";
+path_suffix "/wp-conflg.php";
 path_suffix "/wp-contentt.php";
 path_suffix "/wp-file.php";
 path_suffix "/wp-good.php";
@@ -382,9 +387,15 @@ path_suffix "/filesman.php";
 path_suffix "/gecko-litespeed.php";
 path_suffix "/gecko-new.php";
 path_suffix "/gecko.php";
+path_suffix "/lock360.php";
+path_suffix "/makeasmtp.php";
 path_suffix "/mariju.php";
 path_suffix "/r57.php";
 path_suffix "/shell.php";
+path_suffix "/shell20211028.php";
+path_suffix "/shellv3.php";
+path_suffix "/sidwsi.php";
+path_suffix "/sidwso.php";
 path_suffix "/webshell.php";
 path_suffix "/wso.php";
 path_suffix "/wso112233.php";

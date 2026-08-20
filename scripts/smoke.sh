@@ -124,7 +124,10 @@ still_up() {
 expect_body "ok" http://127.0.0.1:18080/
 expect_body "ok" -A "Mozilla/5.0" http://127.0.0.1:18080/
 expect_body "ok" http://127.0.0.1:18080/about
+expect_body "ok" http://127.0.0.1:18080/chosen.php
 expect_body "ok" http://127.0.0.1:18080/wp-admin
+expect_body "ok" http://127.0.0.1:18080/wp-activate.php
+expect_body "ok" http://127.0.0.1:18080/xmlrpc.php
 expect_body "ok" http://127.0.0.1:18080/environment
 
 # nwall off - never filtered
@@ -152,6 +155,11 @@ expect_drop "path /repo/.git" http://127.0.0.1:18080/repo/.git
 expect_drop "path /repo/.GIT" http://127.0.0.1:18080/repo/.GIT
 expect_drop "path_suffix /wp-admin.php" http://127.0.0.1:18080/wp-admin.php
 expect_drop "path /foo/wp-admin.php" http://127.0.0.1:18080/foo/wp-admin.php
+expect_drop "path component alfacgiapi" http://127.0.0.1:18080/alfa_data/alfacgiapi/
+expect_drop "known shell filename" http://127.0.0.1:18080/wp-content/shell20211028.php
+expect_drop "misplaced WordPress shell" http://127.0.0.1:18080/wp-includes/ixr/chosen.php
+expect_drop "typo-squatted WordPress endpoint" http://127.0.0.1:18080/wp-activat.php
+expect_drop "typo-squatted XML-RPC endpoint" http://127.0.0.1:18080/cgi-bin/xmrlpc.php
 
 still_up
 
