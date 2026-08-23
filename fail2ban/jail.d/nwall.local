@@ -1,0 +1,17 @@
+[nwall]
+enabled = true
+filter = nwall
+logpath = /var/log/nginx/access.log
+backend = auto
+usedns = no
+
+# Require repeated explicit rejections, then escalate repeat bans up to four weeks.
+maxretry = 4
+findtime = 3600
+bantime = 172800
+bantime.increment = true
+bantime.factor = 1
+bantime.maxtime = 2419200
+
+# One address set, with separate rules for TCP and UDP. No other port is blocked.
+action = nftables[type=multiport, name=nwall, port="80,443", protocol="tcp,udp"]

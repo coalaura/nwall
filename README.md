@@ -52,12 +52,17 @@ nwall: drop client:1.2.3.4 rule:path_component value:".git"
 
 `ua` / `uri` are the original request values. Missing UA is logged as `-`.
 
+## fail2ban
+
+An optional, nftables-backed jail is provided in [`fail2ban/`](fail2ban/README.md). It detects nginx access-log status `444`, works with `nwall_log off` and bans only TCP/UDP ports 80 and 443 (HTTP 1/2/3).
+
 ## Layout
 
 ```
 config                 nginx addon description (--add-dynamic-module)
 src/                   module sources
 rules/nwall.rules      default rule set
+fail2ban/              optional 444-based Fail2ban jail
 dev/nginx.conf         foreground dev server
 scripts/setup-dev.sh   packages + local nginx tree (Arch / pacman)
 scripts/build.sh       rebuild the .so
