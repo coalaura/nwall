@@ -66,7 +66,7 @@ jobs:
     env:
       NGINX_VER: ${{ matrix.nginx }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build module + local nginx ${{ matrix.nginx }}
         run: |
@@ -123,7 +123,7 @@ jobs:
           cp "$RUNNER_TEMP/nginx-$NGINX_VER/objs/ngx_http_nwall_module.so" \
             "artifact/ngx_http_nwall_module-$NGINX_VER.so"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nwall-nginx-${{ matrix.nginx }}
           path: artifact/ngx_http_nwall_module-${{ matrix.nginx }}.so
@@ -135,9 +135,9 @@ jobs:
     needs: [versions, build]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: nwall-nginx-*
           merge-multiple: true

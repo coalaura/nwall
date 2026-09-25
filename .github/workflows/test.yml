@@ -72,7 +72,7 @@ jobs:
     env:
       NGINX_VER: ${{ matrix.nginx }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build module + local nginx ${{ matrix.nginx }}
         run: |
