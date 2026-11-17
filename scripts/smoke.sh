@@ -168,7 +168,7 @@ start_nginx "$fixtures/nginx.conf"
 
 for header in 'User-Agent:' 'User-Agent;'; do # missing, explicitly empty
 	response=$(curl -sS --max-time 5 -H "$header" -w '%{http_code} %{content_type}' http://127.0.0.1:18080/)
-	if [[ "$response" != $'Send a non-empty User-Agent header.\n403 text/plain' ]]; then
+	if [[ "$response" != $'Empty user-agent requests are blocked, set a user-agent and retry.\n403 text/plain' ]]; then
 		printf 'unexpected warning response: %q\n' "$response" >&2
 		exit 1
 	fi
