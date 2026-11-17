@@ -75,6 +75,7 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
     ngx_str_t              ua, *subject;
     ngx_uint_t             i;
     ngx_http_nwall_rule_t *rule, *rules;
+	ngx_http_nwall_rule_t *warning = NULL;
 
     if (rs == NULL || rs->rules == NULL || rs->rules->nelts == 0) {
         return NULL;
@@ -96,7 +97,12 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
 
             if (rule->op == NWALL_OP_EMPTY) {
                 if (ua.len == 0) {
-                    return rule;
+					if (!rule->warn) {
+						return rule;
+					}
+
+					/* A warning must not mask a later drop. */
+					warning = rule;
                 }
 
                 continue;
@@ -142,7 +148,7 @@ ngx_http_nwall_rule_t * ngx_http_nwall_match(ngx_http_request_t *r, ngx_http_nwa
         }
     }
 
-    return NULL;
+	return warning;
 }
 
 static void ngx_http_nwall_skip(ngx_http_nwall_parser_t *ps)
@@ -384,6 +390,8 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
 {
     ngx_int_t              rc;
     ngx_str_t              ident, value, kind;
+	ngx_str_t              modifier;
+	ngx_flag_t             warn;
     ngx_uint_t             i, target, op, needs_value;
     ngx_http_nwall_rule_t *rule;
 
@@ -405,6 +413,7 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
         }
 
         ngx_str_null(&value);
+		warn = 0;
 
         if (needs_value) {
             if (ngx_http_nwall_value(ps, &value) != NGX_OK) {
@@ -432,7 +441,22 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
                     }
                 }
             }
-        }
+		} else {
+			ngx_http_nwall_skip(ps);
+
+			if (ps->p < ps->end && *ps->p != ';') {
+				if (ngx_http_nwall_ident(ps, &modifier) != NGX_OK) {
+					return NGX_CONF_ERROR;
+				}
+
+				if (modifier.len != 4 || ngx_strncmp(modifier.data, "warn", 4) != 0) {
+					ngx_conf_log_error(NGX_LOG_EMERG, ps->cf, 0, "nwall: %V:%ui: expected \"warn\" or \";\" after ua_empty", ps->file, ps->line);
+					return NGX_CONF_ERROR;
+				}
+
+				warn = 1;
+			}
+		}
 
         if (ngx_http_nwall_expect_semi(ps) != NGX_OK) {
             return NGX_CONF_ERROR;
@@ -445,6 +469,7 @@ static char * ngx_http_nwall_parse_buf(ngx_http_nwall_parser_t *ps, ngx_http_nwa
 
         rule->target = target;
         rule->op = op;
+		rule->warn = warn;
         rule->pattern = value;
         rule->kind.len = kind.len;
         rule->kind.data = ngx_pnalloc(ps->pool, kind.len);

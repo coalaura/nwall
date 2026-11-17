@@ -25,18 +25,19 @@ One directive per line. `#` comments. Quoted or bare values; `\n` `\t` `\r` `\"`
 
 | directive | matches |
 |---|---|
-| `ua_empty;` | missing or empty `User-Agent` |
+| `ua_empty;` | Missing or empty `User-Agent`: close the connection (shipped default) |
+| `ua_empty warn;` | Missing or empty `User-Agent`: return `403` with `Content-Type: text/plain` and the message `Empty user-agent requests are blocked, set a user-agent and retry.` |
 | `ua_prefix` / `ua_suffix` / `ua_exact` / `ua_contains` | User-Agent |
 | `path_prefix` / `path_suffix` / `path_exact` / `path_contains` | URI path (`r->uri`, decoded, no query) |
 | `path_component` | Exact URI path component or component sequence, matched at component boundaries |
 
 All matches are case-insensitive. Empty patterns (`path_contains "";`) are a config error.
 
-`nwall monitor` logs matching requests but allows them. `nwall on` logs and closes matching requests.
+`nwall monitor` logs matching requests but allows them. `nwall on` enforces the matching rule. A hard-close rule takes priority over a warning, regardless of rule order.
 
 `nwall_log basic` logs the client, rule type, and rule value. `full` also logs the original User-Agent and URI. `off` disables per-request nwall logs.
 
-`ua_empty` will also drop health checks and scripted clients that send no User-Agent. Give those probes a UA or put them on a `nwall off` server.
+To accept health checks and other clients without a User-Agent, omit `ua_empty` from the rules file. Other rules still apply.
 
 `path_component` values do not include leading or trailing slashes. They may contain multiple components, such as `path_component "telescope/requests";`.
 

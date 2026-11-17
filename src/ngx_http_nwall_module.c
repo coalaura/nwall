@@ -71,6 +71,9 @@ ngx_module_t  ngx_http_nwall_module = {
 
 static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
 {
+	static ngx_str_t content_type = ngx_string("text/plain");
+	static ngx_http_complex_value_t warning = { .value = ngx_string("Empty user-agent requests are blocked, set a user-agent and retry.\n") };
+	ngx_int_t                    rc;
     char                        *event;
     ngx_http_nwall_rule_t       *hit;
     ngx_http_nwall_srv_conf_t   *nscf;
@@ -98,7 +101,10 @@ static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
     }
 
     if (nscf->log != NWALL_LOG_OFF) {
-        event = nscf->mode == NWALL_MODE_MONITOR ? "monitor" : "drop";
+		event = hit->warn ? "warn" : "drop";
+		if (nscf->mode == NWALL_MODE_MONITOR) {
+			event = "monitor";
+		}
 
         if (nscf->log == NWALL_LOG_FULL) {
             if (r->headers_in.user_agent != NULL) {
@@ -116,6 +122,13 @@ static ngx_int_t ngx_http_nwall_handler(ngx_http_request_t *r)
     if (nscf->mode == NWALL_MODE_MONITOR) {
         return NGX_DECLINED;
     }
+
+	if (hit->warn) {
+		rc = ngx_http_send_response(r, NGX_HTTP_FORBIDDEN, &content_type, &warning);
+		/* NGX_OK alone would continue the post-read phase. */
+		ngx_http_finalize_request(r, rc);
+		return NGX_DONE;
+	}
 
     return NGX_HTTP_CLOSE;
 }

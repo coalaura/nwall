@@ -32,44 +32,39 @@ mkdir -p "$prefix"/{logs,html,modules}
 "$nginx" -p "$prefix" -c "$conf" -t
 
 master=""
+fixtures=$(mktemp -d "$prefix/ua-empty.XXXXXX")
 
-cleanup() {
+stop_nginx() {
 	if [[ -n "${master:-}" ]] && kill -0 "$master" 2>/dev/null; then
 		kill -QUIT "$master" 2>/dev/null || kill -TERM "$master" 2>/dev/null || true
 
 		wait "$master" 2>/dev/null || true
 	fi
+	master=""
+}
+
+cleanup() {
+	stop_nginx
+	rm -rf "$fixtures"
 }
 
 trap cleanup EXIT
 
-"$nginx" -p "$prefix" -c "$conf" &
+start_nginx() {
+	"$nginx" -p "$prefix" -c "$1" &
+	master=$!
 
-master=$!
+	for _ in $(seq 1 50); do
+		still_up
 
-ready=
+		if curl -fsS --max-time 1 http://127.0.0.1:18080/ >/dev/null; then
+			return
+		fi
 
-for _ in $(seq 1 50); do
-	if ! kill -0 "$master" 2>/dev/null; then
-		echo "nginx exited before becoming ready" >&2
+		sleep 0.1
+	done
 
-		wait "$master" || true
-
-		exit 1
-	fi
-
-	if curl -fsS --max-time 1 http://127.0.0.1:18080/ >/dev/null; then
-		ready=1
-
-		break
-	fi
-
-	sleep 0.1
-done
-
-[[ -n "$ready" ]] || {
 	echo "nginx did not become ready" >&2
-
 	exit 1
 }
 
@@ -99,9 +94,9 @@ expect_drop() {
 
 	local rc=0
 
-	curl -fsS --max-time 5 "$@" >/dev/null || rc=$?
+	curl -sS --max-time 5 "$@" >/dev/null || rc=$?
 
-	if [[ $rc -eq 0 ]]; then
+	if [[ $rc -ne 52 && $rc -ne 56 ]]; then
 		echo "expected drop: $label" >&2
 
 		exit 1
@@ -121,6 +116,7 @@ still_up() {
 }
 
 # nwall on - allowed
+start_nginx "$conf"
 expect_body "ok" http://127.0.0.1:18080/
 expect_body "ok" -A "Mozilla/5.0" http://127.0.0.1:18080/
 expect_body "ok" http://127.0.0.1:18080/about
@@ -164,5 +160,27 @@ expect_drop "typo-squatted XML-RPC endpoint" http://127.0.0.1:18080/cgi-bin/xmrl
 still_up
 
 expect_body "ok" http://127.0.0.1:18080/
+
+stop_nginx
+sed -e 's|nwall_rules .*;|nwall_rules test.rules;|' -e 's/nwall off;/nwall monitor;/' "$conf" >"$fixtures/nginx.conf"
+printf 'ua_empty warn;\npath_exact /blocked;\n' >"$fixtures/test.rules"
+start_nginx "$fixtures/nginx.conf"
+
+for header in 'User-Agent:' 'User-Agent;'; do # missing, explicitly empty
+	response=$(curl -sS --max-time 5 -H "$header" -w '%{http_code} %{content_type}' http://127.0.0.1:18080/)
+	if [[ "$response" != $'Send a non-empty User-Agent header.\n403 text/plain' ]]; then
+		printf 'unexpected warning response: %q\n' "$response" >&2
+		exit 1
+	fi
+done
+
+expect_drop "path drop before UA warning" -A "" http://127.0.0.1:18080/blocked
+expect_body "off" -A "" http://127.0.0.1:18081/ # monitor passes through
+
+stop_nginx
+printf 'path_exact /blocked;\n' >"$fixtures/test.rules"
+start_nginx "$fixtures/nginx.conf"
+expect_body "ok" -A "" http://127.0.0.1:18080/
+expect_drop "path drop without ua_empty" -A "" http://127.0.0.1:18080/blocked
 
 echo "smoke: ok"
